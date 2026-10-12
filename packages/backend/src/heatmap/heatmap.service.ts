@@ -9,6 +9,7 @@ export interface HeatmapPoint {
   x: number;
   y: number;
   pageUrl: string;
+  eventType?: string;
   timestamp: Date;
 }
 
@@ -55,7 +56,7 @@ export class HeatmapService {
     }
 
     const docs = await this.eventModel
-      .find(filter, { x: 1, y: 1, viewport: 1, timestamp: 1, page_url: 1, _id: 0 })
+      .find(filter, { x: 1, y: 1, viewport: 1, timestamp: 1, page_url: 1, event_type: 1, _id: 0 })
       .sort({ timestamp: -1 })
       .limit(this.maxPoints)
       .lean()
@@ -80,6 +81,7 @@ export class HeatmapService {
         x: doc.x as number,
         y: doc.y as number,
         pageUrl: doc.page_url,
+        eventType: (doc as { event_type?: string }).event_type ?? 'click',
         timestamp: doc.timestamp,
       })),
     };

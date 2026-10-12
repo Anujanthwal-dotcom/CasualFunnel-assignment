@@ -1,7 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import type { HydratedDocument } from 'mongoose';
 
-/** Event types the tracker emits today. Extendable without a migration. */
 export const EVENT_TYPES = ['page_view', 'click'] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 

@@ -7,6 +7,12 @@ The system answers the two questions the assignment cares about:
 1. **What did each user do?** — sessionized event streams, browsable session-by-session as a timeline.
 2. **Where do users click?** — per-page click coordinates rendered as a heatmap.
 
+## Assumptions
+
+1. This assignment was built with the assumption of single tenant. This application could be extended to multi-tenant but the description of the assignment limits this project to be a small full-stack application.
+2. Heatmap is shown for a single page as this is a single tenant application.
+3. Though the description mentioned to create a JS script, I have created the script in Typescript first and then compiled it to JS as Typescript is more maintainable than JS. Also, Typescript was used in frontend and backend development also.
+
 ---
 
 ## Table of contents
@@ -68,7 +74,7 @@ One collection (`events`) is the **source of truth**. Every dashboard view is an
 | Layer      | Choice                                                                        |
 | ---------- | ----------------------------------------------------------------------------- |
 | Tracker    | TypeScript → single minified **IIFE** bundle via [tsup](https://tsup.egoist.dev/) (esbuild) |
-| Backend    | **NestJS 12** (ESM), Express, `@nestjs/mongoose`, `@nestjs/swagger`, `@nestjs/throttler`, `class-validator` |
+| Backend    | Node.JS, **NestJS 12**, `@nestjs/mongoose`, `@nestjs/swagger`, `@nestjs/throttler`, `class-validator` |
 | Database   | **MongoDB 7** (`mongodb/mongodb-community-server` image)                        |
 | Dashboard  | **React 19** + **Vite**, **Tailwind CSS v4**, **TanStack Query**, `<canvas>` heatmap |
 | Tooling    | npm workspaces, **Vitest**, oxlint, Prettier, Docker Compose                   |

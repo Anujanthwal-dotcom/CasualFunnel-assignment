@@ -7,37 +7,41 @@ function isClick(event: TimelineEvent): boolean {
 
 export function Timeline({ events }: { events: TimelineEvent[] }) {
   return (
-    <ol className="relative ml-2 border-l border-slate-800">
+    <ol className="relative ml-2 border-l border-hairline">
       {events.map((event, index) => {
         const click = isClick(event);
         return (
-          <li key={`${event.timestamp}-${index}`} className="relative mb-4 pl-6">
+          <li key={`${event.timestamp}-${index}`} className="relative mb-5 pl-6">
             <span
               aria-hidden
-              className={`absolute -left-[9px] top-1.5 grid h-4 w-4 place-items-center rounded-full ring-4 ring-slate-950 ${
-                click ? 'bg-sky-400' : 'bg-indigo-500'
+              className={`absolute -left-[9px] top-1.5 grid h-4 w-4 place-items-center rounded-full border border-hairline ring-4 ring-surface-card ${
+                click ? 'bg-primary' : 'bg-accent-purple'
               }`}
             />
             <div className="flex flex-wrap items-center gap-2">
               <span
-                className={`rounded px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${
-                  click ? 'bg-sky-500/15 text-sky-300' : 'bg-indigo-500/15 text-indigo-300'
+                className={`rounded-xs border px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${
+                  click
+                    ? 'border-accent-blue/30 bg-accent-blue-soft text-link-blue'
+                    : 'border-accent-purple/30 bg-accent-purple-soft text-accent-purple'
                 }`}
               >
                 {click ? 'click' : 'page_view'}
               </span>
-              <span className="text-xs text-slate-500">{formatClock(event.timestamp)}</span>
+              <span className="text-xs font-medium text-mute">{formatClock(event.timestamp)}</span>
               {click && (event.x != null || event.y != null) && (
-                <span className="font-mono text-xs text-slate-500">
+                <span className="rounded-xs border border-hairline-soft bg-surface-soft px-1 py-0.5 font-mono text-[11px] text-body">
                   ({event.x}, {event.y})
                 </span>
               )}
             </div>
-            <p className="mt-1 truncate font-mono text-xs text-slate-300" title={event.page_url}>
+            <p className="mt-1.5 truncate font-mono text-xs text-ink" title={event.page_url}>
               {shortUrl(event.page_url, 60)}
             </p>
             {click && typeof event.metadata?.text === 'string' && event.metadata.text && (
-              <p className="mt-0.5 text-xs text-slate-500">“{event.metadata.text}”</p>
+              <p className="mt-1 text-xs text-charcoal">
+                Target text: <span className="font-semibold text-ink">“{event.metadata.text}”</span>
+              </p>
             )}
           </li>
         );

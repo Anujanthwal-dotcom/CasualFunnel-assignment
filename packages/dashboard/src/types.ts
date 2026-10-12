@@ -30,6 +30,7 @@ export interface HeatmapPoint {
   x: number;
   y: number;
   pageUrl: string;
+  eventType?: string;
   timestamp: string;
 }
 
@@ -48,6 +49,14 @@ export interface PageSummary {
   pageViewCount: number;
   sessionCount: number;
   lastSeen: string;
+}
+
+export interface DailyActivity {
+  date: string; // 'YYYY-MM-DD'
+  totalEvents: number;
+  clicks: number;
+  pageViews: number;
+  sessions: number;
 }
 
 export interface StatsOverview {

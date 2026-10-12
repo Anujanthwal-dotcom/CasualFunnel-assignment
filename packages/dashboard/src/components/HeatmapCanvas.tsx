@@ -1,46 +1,58 @@
 import { useEffect, useRef, useState } from 'react';
 import type { HeatmapPoint } from '../types';
+import { Badge } from './ui';
+import { formatDateTime } from '../lib/format';
 
-export type HeatmapMode = 'dots' | 'grid';
+export type HeatmapCategory = 'click' | 'heatmap' | 'grid';
 
-const GRID_COLUMNS = 32;
-
-/** HSL ramp from cool (low density) to hot (high density). */
-function heatColor(t: number, alphaScale = 1): string {
-  const clamped = Math.min(1, Math.max(0, t));
-  const hue = 220 - 220 * clamped; // 220 (blue) → 0 (red)
-  const alpha = (0.2 + 0.65 * clamped) * alphaScale;
-  return `hsla(${hue}, 90%, 55%, ${alpha})`;
+export interface HeatmapCanvasProps {
+  points: HeatmapPoint[];
+  bounds: { width: number; height: number };
+  category?: HeatmapCategory;
 }
+
+interface HoverState {
+  tooltipX: number;
+  tooltipY: number;
+  canvasX: number;
+  canvasY: number;
+  origX: number;
+  origY: number;
+  eventType: string | null;
+  nearbyCount: number;
+  timestamp?: string;
+  snapPoint?: { x: number; y: number } | null;
+}
+
+const DEFAULT_FOLD_Y = 768;
 
 export function HeatmapCanvas({
   points,
   bounds,
-  mode,
-}: {
-  points: HeatmapPoint[];
-  bounds: { width: number; height: number };
-  mode: HeatmapMode;
-}) {
+  category = 'click',
+}: HeatmapCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [resizeTick, setResizeTick] = useState(0);
+  const [hover, setHover] = useState<HoverState | null>(null);
 
-  // Redraw when the element resizes (e.g. window resize, responsive layout).
+  // Re-render when size changes
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const observer = new ResizeObserver(() => setResizeTick((tick) => tick + 1));
-    observer.observe(canvas);
+    const container = containerRef.current;
+    if (!container) return;
+    const observer = new ResizeObserver(() => setResizeTick((t) => t + 1));
+    observer.observe(container);
     return () => observer.disconnect();
   }, []);
 
+  // Main canvas drawing
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const cssWidth = canvas.clientWidth || 800;
-    const aspect = bounds.height / Math.max(bounds.width, 1);
-    const cssHeight = Math.max(220, Math.round(cssWidth * aspect));
+    const aspect = Math.max(bounds.height, 600) / Math.max(bounds.width, 1);
+    const cssHeight = Math.max(380, Math.round(cssWidth * aspect));
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
     canvas.width = Math.round(cssWidth * dpr);
@@ -53,74 +65,211 @@ export function HeatmapCanvas({
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, cssWidth, cssHeight);
 
-    // Background grid, aligned to "real" viewport pixels (every 200px).
     const scaleX = cssWidth / Math.max(bounds.width, 1);
     const scaleY = cssHeight / Math.max(bounds.height, 1);
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.08)';
+
+    // 1. Plain wireframe canvas (neutral, general to any website)
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, cssWidth, cssHeight);
+
+    // Subtle coordinate grid
+    ctx.strokeStyle = 'rgba(191, 193, 183, 0.22)';
     ctx.lineWidth = 1;
-    for (let x = 200 * scaleX; x < cssWidth; x += 200 * scaleX) {
+    for (let x = 100 * scaleX; x < cssWidth; x += 100 * scaleX) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, cssHeight);
       ctx.stroke();
     }
-    for (let y = 200 * scaleY; y < cssHeight; y += 200 * scaleY) {
+    for (let y = 100 * scaleY; y < cssHeight; y += 100 * scaleY) {
       ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(cssWidth, y);
       ctx.stroke();
     }
 
-    if (mode === 'dots') {
-      ctx.globalCompositeOperation = 'lighter';
-      const radius = 16;
-      for (const point of points) {
-        const x = point.x * scaleX;
-        const y = point.y * scaleY;
-        const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-        gradient.addColorStop(0, 'rgba(56, 189, 248, 0.55)');
-        gradient.addColorStop(0.45, 'rgba(99, 102, 241, 0.28)');
-        gradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(x, y, radius, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.globalCompositeOperation = 'source-over';
-      return;
+    // Fold line guideline (standard viewport fold at ~768px)
+    if (bounds.height > DEFAULT_FOLD_Y) {
+      const foldY = DEFAULT_FOLD_Y * scaleY;
+      ctx.save();
+      ctx.setLineDash([6, 5]);
+      ctx.strokeStyle = 'rgba(108, 110, 99, 0.45)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, foldY);
+      ctx.lineTo(cssWidth, foldY);
+      ctx.stroke();
+
+      ctx.font = '10px monospace';
+      ctx.fillStyle = '#6c6e63';
+      ctx.fillText(`Fold line (${DEFAULT_FOLD_Y}px)`, 12, foldY - 6);
+      ctx.restore();
     }
 
-    // Density grid mode.
-    const rows = Math.max(1, Math.round(GRID_COLUMNS * (bounds.height / Math.max(bounds.width, 1))));
-    const cells = new Array<number>(GRID_COLUMNS * rows).fill(0);
-    let max = 0;
+    // 2. Render click points
+    const dotRadius = 5;
 
     for (const point of points) {
-      const col = Math.min(GRID_COLUMNS - 1, Math.max(0, Math.floor((point.x / bounds.width) * GRID_COLUMNS)));
-      const row = Math.min(rows - 1, Math.max(0, Math.floor((point.y / bounds.height) * rows)));
-      const index = row * GRID_COLUMNS + col;
-      cells[index] += 1;
-      if (cells[index] > max) max = cells[index];
+      const x = point.x * scaleX;
+      const y = point.y * scaleY;
+
+      // Outer pointer circle
+      ctx.beginPath();
+      ctx.arc(x, y, dotRadius * 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(247, 165, 1, 0.25)';
+      ctx.fill();
+
+      // Inner solid circle
+      ctx.beginPath();
+      ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
+      ctx.fillStyle = '#f7a501';
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#23251d';
+      ctx.stroke();
     }
 
-    const cellWidth = cssWidth / GRID_COLUMNS;
-    const cellHeight = cssHeight / rows;
+    // 3. Hover Reticle / Pointer
+    if (hover) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(35, 37, 29, 0.6)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
 
-    for (let index = 0; index < cells.length; index += 1) {
-      const count = cells[index];
-      if (count === 0) continue;
-      const col = index % GRID_COLUMNS;
-      const row = Math.floor(index / GRID_COLUMNS);
-      ctx.fillStyle = heatColor(max > 0 ? count / max : 0);
-      ctx.fillRect(col * cellWidth, row * cellHeight, Math.ceil(cellWidth) + 1, Math.ceil(cellHeight) + 1);
+      // Crosshairs
+      ctx.beginPath();
+      ctx.moveTo(hover.canvasX, 0);
+      ctx.lineTo(hover.canvasX, cssHeight);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(0, hover.canvasY);
+      ctx.lineTo(cssWidth, hover.canvasY);
+      ctx.stroke();
+
+      // Highlight circle only when hovering over an actual event
+      if (hover.eventType && hover.snapPoint) {
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.arc(hover.snapPoint.x, hover.snapPoint.y, 14, 0, Math.PI * 2);
+        ctx.strokeStyle = '#f7a501';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(247, 165, 1, 0.2)';
+        ctx.fill();
+      }
+
+      ctx.restore();
     }
-  }, [points, bounds, mode, resizeTick]);
+  }, [points, bounds, category, resizeTick, hover]);
+
+  // Handle interactive mouse move
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const canvasX = e.clientX - rect.left;
+    const canvasY = e.clientY - rect.top;
+
+    const scaleX = (canvas.clientWidth || 800) / Math.max(bounds.width, 1);
+    const scaleY = (canvas.clientHeight || 400) / Math.max(bounds.height, 1);
+
+    const origX = Math.round(canvasX / Math.max(scaleX, 0.001));
+    const origY = Math.round(canvasY / Math.max(scaleY, 0.001));
+
+    // Match search radius in canvas pixels to visual blob/pointer radius
+    const searchRadius = 16;
+    let closestPoint: HeatmapPoint | null = null;
+    let minDistanceSq = Infinity;
+    let nearbyCount = 0;
+
+    for (const p of points) {
+      const ptCanvasX = p.x * scaleX;
+      const ptCanvasY = p.y * scaleY;
+      const dx = ptCanvasX - canvasX;
+      const dy = ptCanvasY - canvasY;
+      const distSq = dx * dx + dy * dy;
+      if (distSq <= searchRadius * searchRadius) {
+        nearbyCount++;
+        if (distSq < minDistanceSq) {
+          minDistanceSq = distSq;
+          closestPoint = p;
+        }
+      }
+    }
+
+    const eventType = closestPoint ? (closestPoint.eventType || 'click') : null;
+    const clientWidth = canvas.clientWidth || 800;
+    const tooltipX = Math.min(Math.max(canvasX, 120), clientWidth - 120);
+    const tooltipY = Math.max(canvasY - 10, 80);
+
+    setHover({
+      canvasX,
+      canvasY,
+      tooltipX,
+      tooltipY,
+      origX,
+      origY,
+      eventType,
+      nearbyCount,
+      timestamp: closestPoint?.timestamp,
+      snapPoint: closestPoint ? { x: closestPoint.x * scaleX, y: closestPoint.y * scaleY } : null,
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setHover(null);
+  };
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="w-full rounded-lg border border-slate-800 bg-slate-950"
-      aria-label="Click heatmap canvas"
-    />
+    <div ref={containerRef} className="relative w-full overflow-hidden select-none">
+      <canvas
+        ref={canvasRef}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className="block w-full cursor-crosshair rounded-b-md"
+        aria-label="Interactive click heatmap canvas"
+      />
+
+      {/* Floating Hover Tooltip showing event types */}
+      {hover && (
+        <div
+          className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-full transform pb-3"
+          style={{
+            left: `${hover.tooltipX}px`,
+            top: `${hover.tooltipY}px`,
+          }}
+        >
+          <div className="rounded-md border border-hairline bg-surface-card px-3 py-2 text-xs text-ink shadow-xl">
+            <div className="flex items-center gap-1.5 border-b border-hairline-soft pb-1.5 mb-1.5">
+              <span className="text-[11px] font-bold text-mute uppercase tracking-wider">Event:</span>
+              {hover.eventType ? (
+                <Badge tone="indigo">{hover.eventType}</Badge>
+              ) : (
+                <span className="text-[11px] text-mute font-medium">None</span>
+              )}
+            </div>
+            <div className="font-mono text-[11px] text-body">
+              Coordinates: ({hover.origX}, {hover.origY})
+            </div>
+            {hover.nearbyCount > 0 ? (
+              <div className="mt-1 text-[11px] text-mute">
+                {hover.nearbyCount} {hover.nearbyCount === 1 ? 'event' : 'events'} in this area
+                {hover.timestamp && (
+                  <span className="block text-[10px] text-mute/80 mt-0.5">
+                    {formatDateTime(hover.timestamp)}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div className="mt-1 text-[11px] text-mute/70">
+                No events in this area
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
