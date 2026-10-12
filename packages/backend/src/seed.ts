@@ -13,9 +13,9 @@ const uri = process.env.MONGODB_URI ?? 'mongodb://localhost:27017/casualfunnel';
 const SESSION_COUNT = Number(process.env.SEED_SESSIONS ?? 18);
 
 const PAGES = [
-  'http://localhost:5500/demo/index.html',
-  'http://localhost:5500/demo/products.html',
-  'http://localhost:5500/demo/checkout.html',
+  'http://localhost:5173/demo.html',
+  'http://localhost:5173/products.html',
+  'http://localhost:5173/checkout.html',
 ];
 
 const VIEWPORTS = [

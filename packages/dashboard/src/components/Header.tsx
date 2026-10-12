@@ -24,26 +24,37 @@ export function Header({ view, onChange }: { view: View; onChange: (view: View) 
           </div>
         </div>
 
-        <nav className="inline-flex w-fit items-center gap-1 rounded-md border border-hairline bg-surface-soft p-1">
-          {TABS.map((tab) => {
-            const active = view === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => onChange(tab.id)}
-                className={
-                  'rounded-md px-3.5 py-1.5 text-xs font-bold transition-colors ' +
-                  (active
-                    ? 'border border-hairline bg-surface-card text-ink shadow-none'
-                    : 'text-body hover:text-ink')
-                }
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </nav>
+        <div className="flex items-center gap-2">
+          <nav className="inline-flex w-fit items-center gap-1 rounded-md border border-hairline bg-surface-soft p-1">
+            {TABS.map((tab) => {
+              const active = view === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => onChange(tab.id)}
+                  className={
+                    'rounded-md px-3.5 py-1.5 text-xs font-bold transition-colors ' +
+                    (active
+                      ? 'border border-hairline bg-surface-card text-ink shadow-none'
+                      : 'text-body hover:text-ink')
+                  }
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
+          <a
+            href="/demo.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded-md border border-hairline bg-surface-soft px-3 py-2 text-xs font-bold text-body transition-colors hover:bg-surface-card hover:text-ink"
+            title="Open tracking demo in a new tab"
+          >
+            Demo Page <span className="text-[10px] text-mute">↗</span>
+          </a>
+        </div>
 
         <dl className="flex items-center gap-5 text-xs">
           <Metric label="Events" value={formatNumber(stats?.totalEvents)} />

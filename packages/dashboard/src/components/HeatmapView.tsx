@@ -72,9 +72,27 @@ export function HeatmapView() {
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5 text-xs text-mute">
-            <span className="inline-block h-2.5 w-2.5 rounded-full border border-[#23251d] bg-[#f7a501]" />
-            <span className="font-medium text-ink">Clicks</span>
+          <div className="flex items-center gap-3">
+            {/* Intensity Scale Legend */}
+            <div className="flex items-center gap-1.5 text-[11px] text-mute">
+              <span>1 event</span>
+              <span
+                className="h-2 w-16 sm:w-20 rounded-full border border-hairline-soft"
+                style={{
+                  background:
+                    'linear-gradient(90deg, #2c84e0 0%, #109ba5 25%, #2c8c66 50%, #f7a501 75%, #cd4239 100%)',
+                }}
+              />
+              <span>High</span>
+            </div>
+
+            <span className="hidden sm:inline-block h-3 w-px bg-hairline" />
+
+            {/* Click Count summary */}
+            <div className="flex items-center gap-1.5 text-xs text-mute">
+              <span className="inline-block h-2 w-2 rounded-full border border-[#23251d] bg-[#f7a501]" />
+              <span className="font-semibold text-ink">{formatNumber(points.length)} clicks</span>
+            </div>
           </div>
         </div>
 

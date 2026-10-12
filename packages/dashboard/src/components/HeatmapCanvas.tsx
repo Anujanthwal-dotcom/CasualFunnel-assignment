@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import type { HeatmapPoint } from '../types';
 import { Badge } from './ui';
 import { formatDateTime } from '../lib/format';
@@ -11,17 +11,119 @@ export interface HeatmapCanvasProps {
   category?: HeatmapCategory;
 }
 
+interface CoordinateCluster {
+  x: number;
+  y: number;
+  count: number;
+  eventType?: string;
+  timestamp?: string;
+}
+
 interface HoverState {
   tooltipX: number;
   tooltipY: number;
+  placementX: 'left' | 'center' | 'right';
+  placementY: 'above' | 'below';
   canvasX: number;
   canvasY: number;
   origX: number;
   origY: number;
   eventType: string | null;
-  nearbyCount: number;
+  count: number;
+  color: string;
   timestamp?: string;
   snapPoint?: { x: number; y: number } | null;
+}
+
+interface GradientStop {
+  pos: number;
+  r: number;
+  g: number;
+  b: number;
+}
+
+// 5-stop color gradient from lowest intensity to highest intensity:
+// Cool Blue -> Cyan/Teal -> Green -> Amber/Gold -> Hot Red
+const INTENSITY_GRADIENT: GradientStop[] = [
+  { pos: 0.0, r: 44, g: 132, b: 224 },   // #2c84e0 (1 event / lowest intensity)
+  { pos: 0.25, r: 16, g: 155, b: 165 },  // Teal
+  { pos: 0.5, r: 44, g: 140, b: 102 },   // #2c8c66 (Green)
+  { pos: 0.75, r: 247, g: 165, b: 1 },   // #f7a501 (Amber / Gold)
+  { pos: 1.0, r: 205, g: 66, b: 57 },    // #cd4239 (Hot Red / peak intensity)
+];
+
+/** Return solid color string interpolated along the intensity gradient */
+function getIntensityColor(ratio: number): string {
+  const t = Math.max(0, Math.min(1, ratio));
+  for (let i = 0; i < INTENSITY_GRADIENT.length - 1; i++) {
+    const s1 = INTENSITY_GRADIENT[i];
+    const s2 = INTENSITY_GRADIENT[i + 1];
+    if (t >= s1.pos && t <= s2.pos) {
+      const p = (t - s1.pos) / (s2.pos - s1.pos);
+      const r = Math.round(s1.r + (s2.r - s1.r) * p);
+      const g = Math.round(s1.g + (s2.g - s1.g) * p);
+      const b = Math.round(s1.b + (s2.b - s1.b) * p);
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+  }
+  const last = INTENSITY_GRADIENT[INTENSITY_GRADIENT.length - 1];
+  return `rgb(${last.r}, ${last.g}, ${last.b})`;
+}
+
+/** Groups events by coordinate to determine exact intensity per location */
+function groupEventsByCoordinate(
+  points: HeatmapPoint[],
+  snapPx = 4
+): CoordinateCluster[] {
+  if (points.length === 0) return [];
+
+  const map = new Map<
+    string,
+    {
+      sumX: number;
+      sumY: number;
+      count: number;
+      eventType?: string;
+      timestamp?: string;
+    }
+  >();
+
+  for (const pt of points) {
+    const gx = Math.round(pt.x / snapPx);
+    const gy = Math.round(pt.y / snapPx);
+    const key = `${gx}_${gy}`;
+    const entry = map.get(key);
+    if (entry) {
+      entry.sumX += pt.x;
+      entry.sumY += pt.y;
+      entry.count++;
+      if (pt.timestamp && (!entry.timestamp || pt.timestamp > entry.timestamp)) {
+        entry.timestamp = pt.timestamp;
+        entry.eventType = pt.eventType;
+      }
+    } else {
+      map.set(key, {
+        sumX: pt.x,
+        sumY: pt.y,
+        count: 1,
+        eventType: pt.eventType || 'click',
+        timestamp: pt.timestamp,
+      });
+    }
+  }
+
+  const clusters: CoordinateCluster[] = [];
+  for (const item of map.values()) {
+    clusters.push({
+      x: Math.round(item.sumX / item.count),
+      y: Math.round(item.sumY / item.count),
+      count: item.count,
+      eventType: item.eventType,
+      timestamp: item.timestamp,
+    });
+  }
+
+  return clusters;
 }
 
 const DEFAULT_FOLD_Y = 768;
@@ -29,12 +131,18 @@ const DEFAULT_FOLD_Y = 768;
 export function HeatmapCanvas({
   points,
   bounds,
-  category = 'click',
 }: HeatmapCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [resizeTick, setResizeTick] = useState(0);
   const [hover, setHover] = useState<HoverState | null>(null);
+
+  // Group events by coordinate
+  const clusters = useMemo(() => groupEventsByCoordinate(points, 4), [points]);
+  const maxCount = useMemo(
+    () => clusters.reduce((max, c) => Math.max(max, c.count), 1),
+    [clusters]
+  );
 
   // Re-render when size changes
   useEffect(() => {
@@ -106,27 +214,40 @@ export function HeatmapCanvas({
       ctx.restore();
     }
 
-    // 2. Render click points
-    const dotRadius = 5;
+    // 2. Render Solid Circles with Color Gradient by Event Intensity
+    if (clusters.length > 0) {
+      // Sort ascending by count so hot/high-intensity circles render on top
+      const sorted = [...clusters].sort((a, b) => a.count - b.count);
 
-    for (const point of points) {
-      const x = point.x * scaleX;
-      const y = point.y * scaleY;
+      for (const cluster of sorted) {
+        const x = cluster.x * scaleX;
+        const y = cluster.y * scaleY;
 
-      // Outer pointer circle
-      ctx.beginPath();
-      ctx.arc(x, y, dotRadius * 2.5, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(247, 165, 1, 0.25)';
-      ctx.fill();
+        // Ratio from 0.0 (1 event) to 1.0 (max events)
+        const ratio = maxCount > 1 ? (cluster.count - 1) / (maxCount - 1) : 0;
+        const solidColor = getIntensityColor(ratio);
 
-      // Inner solid circle
-      ctx.beginPath();
-      ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
-      ctx.fillStyle = '#f7a501';
-      ctx.fill();
-      ctx.lineWidth = 1.5;
-      ctx.strokeStyle = '#23251d';
-      ctx.stroke();
+        // Solid circle radius slightly scaled by count (5px to 8.5px)
+        const radius = Math.min(8.5, Math.max(5, 5 + Math.round(ratio * 3.5)));
+
+        // Solid circle fill (no radial blur)
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = solidColor;
+        ctx.fill();
+
+        // Crisp white inner stroke
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+
+        // Subtle dark outer border for contrast on light backgrounds
+        ctx.beginPath();
+        ctx.arc(x, y, radius + 1, 0, Math.PI * 2);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(35, 37, 29, 0.35)';
+        ctx.stroke();
+      }
     }
 
     // 3. Hover Reticle / Pointer
@@ -148,20 +269,18 @@ export function HeatmapCanvas({
       ctx.stroke();
 
       // Highlight circle only when hovering over an actual event
-      if (hover.eventType && hover.snapPoint) {
+      if (hover.snapPoint && hover.count > 0) {
         ctx.setLineDash([]);
         ctx.beginPath();
         ctx.arc(hover.snapPoint.x, hover.snapPoint.y, 14, 0, Math.PI * 2);
-        ctx.strokeStyle = '#f7a501';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = hover.color;
+        ctx.lineWidth = 2.5;
         ctx.stroke();
-        ctx.fillStyle = 'rgba(247, 165, 1, 0.2)';
-        ctx.fill();
       }
 
       ctx.restore();
     }
-  }, [points, bounds, category, resizeTick, hover]);
+  }, [clusters, bounds, maxCount, resizeTick, hover]);
 
   // Handle interactive mouse move
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -178,43 +297,79 @@ export function HeatmapCanvas({
     const origX = Math.round(canvasX / Math.max(scaleX, 0.001));
     const origY = Math.round(canvasY / Math.max(scaleY, 0.001));
 
-    // Match search radius in canvas pixels to visual blob/pointer radius
     const searchRadius = 16;
-    let closestPoint: HeatmapPoint | null = null;
+    let closestCluster: CoordinateCluster | null = null;
     let minDistanceSq = Infinity;
-    let nearbyCount = 0;
 
-    for (const p of points) {
-      const ptCanvasX = p.x * scaleX;
-      const ptCanvasY = p.y * scaleY;
-      const dx = ptCanvasX - canvasX;
-      const dy = ptCanvasY - canvasY;
+    for (const c of clusters) {
+      const cCanvasX = c.x * scaleX;
+      const cCanvasY = c.y * scaleY;
+      const dx = cCanvasX - canvasX;
+      const dy = cCanvasY - canvasY;
       const distSq = dx * dx + dy * dy;
-      if (distSq <= searchRadius * searchRadius) {
-        nearbyCount++;
-        if (distSq < minDistanceSq) {
-          minDistanceSq = distSq;
-          closestPoint = p;
-        }
+      if (distSq <= searchRadius * searchRadius && distSq < minDistanceSq) {
+        minDistanceSq = distSq;
+        closestCluster = c;
       }
     }
 
-    const eventType = closestPoint ? (closestPoint.eventType || 'click') : null;
     const clientWidth = canvas.clientWidth || 800;
-    const tooltipX = Math.min(Math.max(canvasX, 120), clientWidth - 120);
-    const tooltipY = Math.max(canvasY - 10, 80);
+    const targetX = closestCluster ? closestCluster.x * scaleX : canvasX;
+    const targetY = closestCluster ? closestCluster.y * scaleY : canvasY;
+
+    // Smart horizontal placement preventing overflow on canvas sides
+    let placementX: 'left' | 'center' | 'right' = 'center';
+    let tooltipX = targetX;
+
+    if (targetX < 140) {
+      // Near left boundary: align card to the right of point
+      placementX = 'right';
+      tooltipX = Math.max(12, targetX + 14);
+    } else if (targetX > clientWidth - 140) {
+      // Near right boundary: align card to the left of point
+      placementX = 'left';
+      tooltipX = Math.min(clientWidth - 12, targetX - 14);
+    } else {
+      // Centered over point
+      placementX = 'center';
+      tooltipX = targetX;
+    }
+
+    // Smart vertical placement flipping when near top
+    let placementY: 'above' | 'below' = 'above';
+    let tooltipY = targetY - 12;
+
+    if (targetY < 100) {
+      // Near top edge: flip card below point
+      placementY = 'below';
+      tooltipY = targetY + 16;
+    } else {
+      // Above point
+      placementY = 'above';
+      tooltipY = targetY - 12;
+    }
+
+    const ratio = closestCluster && maxCount > 1
+      ? (closestCluster.count - 1) / (maxCount - 1)
+      : 0;
+    const color = getIntensityColor(ratio);
 
     setHover({
       canvasX,
       canvasY,
       tooltipX,
       tooltipY,
-      origX,
-      origY,
-      eventType,
-      nearbyCount,
-      timestamp: closestPoint?.timestamp,
-      snapPoint: closestPoint ? { x: closestPoint.x * scaleX, y: closestPoint.y * scaleY } : null,
+      placementX,
+      placementY,
+      origX: closestCluster ? closestCluster.x : origX,
+      origY: closestCluster ? closestCluster.y : origY,
+      eventType: closestCluster?.eventType || null,
+      count: closestCluster ? closestCluster.count : 0,
+      color,
+      timestamp: closestCluster?.timestamp,
+      snapPoint: closestCluster
+        ? { x: closestCluster.x * scaleX, y: closestCluster.y * scaleY }
+        : null,
     });
   };
 
@@ -232,16 +387,22 @@ export function HeatmapCanvas({
         aria-label="Interactive click heatmap canvas"
       />
 
-      {/* Floating Hover Tooltip showing event types */}
+      {/* Floating Hover Tooltip showing event count and intensity at coordinate */}
       {hover && (
         <div
-          className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-full transform pb-3"
+          className={`pointer-events-none absolute z-30 transform ${
+            hover.placementX === 'center'
+              ? '-translate-x-1/2'
+              : hover.placementX === 'left'
+              ? '-translate-x-full'
+              : 'translate-x-0'
+          } ${hover.placementY === 'above' ? '-translate-y-full' : 'translate-y-0'}`}
           style={{
             left: `${hover.tooltipX}px`,
             top: `${hover.tooltipY}px`,
           }}
         >
-          <div className="rounded-md border border-hairline bg-surface-card px-3 py-2 text-xs text-ink shadow-xl">
+          <div className="w-64 max-w-[calc(100vw-3rem)] rounded-md border border-hairline bg-surface-card p-3 text-xs text-ink shadow-2xl">
             <div className="flex items-center gap-1.5 border-b border-hairline-soft pb-1.5 mb-1.5">
               <span className="text-[11px] font-bold text-mute uppercase tracking-wider">Event:</span>
               {hover.eventType ? (
@@ -251,20 +412,28 @@ export function HeatmapCanvas({
               )}
             </div>
             <div className="font-mono text-[11px] text-body">
-              Coordinates: ({hover.origX}, {hover.origY})
+              Coordinate: ({hover.origX}, {hover.origY})
             </div>
-            {hover.nearbyCount > 0 ? (
-              <div className="mt-1 text-[11px] text-mute">
-                {hover.nearbyCount} {hover.nearbyCount === 1 ? 'event' : 'events'} in this area
-                {hover.timestamp && (
-                  <span className="block text-[10px] text-mute/80 mt-0.5">
-                    {formatDateTime(hover.timestamp)}
+            {hover.count > 0 ? (
+              <div className="mt-1.5 flex items-start gap-1.5 text-[11px] font-semibold text-ink">
+                <span
+                  className="mt-0.5 inline-block h-2.5 w-2.5 rounded-full border border-[#23251d] shrink-0"
+                  style={{ backgroundColor: hover.color }}
+                />
+                <div>
+                  <span>
+                    {hover.count} {hover.count === 1 ? 'event' : 'events'} at this coordinate
                   </span>
-                )}
+                  {hover.timestamp && (
+                    <span className="block text-[10px] text-mute font-normal mt-0.5">
+                      {formatDateTime(hover.timestamp)}
+                    </span>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="mt-1 text-[11px] text-mute/70">
-                No events in this area
+                No events at this coordinate
               </div>
             )}
           </div>

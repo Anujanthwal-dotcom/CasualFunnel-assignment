@@ -71,6 +71,25 @@ export function ScriptTagView() {
           </Button>
         </div>
       </Card>
+
+      <Card className="p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-ink">Want to test tracking right away?</h3>
+            <p className="mt-0.5 text-xs text-mute">
+              Open the interactive demo page served directly at <code className="rounded bg-surface-soft px-1.5 py-0.5 font-mono text-ink">/demo.html</code> to generate live clicks and events.
+            </p>
+          </div>
+          <a
+            href="/demo.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border border-hairline bg-surface-card px-4 py-2 text-xs font-bold text-ink transition-colors hover:bg-surface-soft"
+          >
+            Open Demo Page <span className="text-[10px] text-mute">↗</span>
+          </a>
+        </div>
+      </Card>
     </section>
   );
 }

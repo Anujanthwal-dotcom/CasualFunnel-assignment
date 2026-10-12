@@ -44,7 +44,7 @@ export class CreateEventDto {
   @MaxLength(64)
   event_type!: string;
 
-  @ApiProperty({ example: 'http://localhost:5500/demo/index.html' })
+  @ApiProperty({ example: 'http://localhost:5173/demo.html' })
   @IsString()
   @IsNotEmpty()
   page_url!: string;

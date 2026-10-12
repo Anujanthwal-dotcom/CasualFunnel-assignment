@@ -41,10 +41,10 @@ The system answers the two questions the assignment cares about:
 
 ```
                         ┌──────────────────────────────────────────────┐
-  demo/index.html       │                                              │
-  (opened from file://) │            NestJS API  (:3000)               │
+  demo.html             │                                              │
+  (:5173/demo.html)     │            NestJS API  (:3000)               │
         │               │                                              │
-        │  <script src="http://localhost:3000/tracker.js">             │
+        │  <script src="/tracker.js"> (proxied)                        │
         ▼               │  ┌────────────┐   ┌──────────────────────┐   │
  ┌─────────────┐        │  │ /tracker.js│   │  POST /api/events    │   │
  │   TRACKER   │  POST  │  │ (static)   │   │  (IngestPipe + DTOs) │   │
@@ -86,8 +86,6 @@ One collection (`events`) is the **source of truth**. Every dashboard view is an
 
 ```
 casualfunnel/
-├── demo/
-│   └── index.html                 # Standalone demo page — open directly in Chrome
 ├── docker-compose.yml             # MongoDB for local development
 ├── scripts/
 │   └── copy-tracker.mjs           # Copies tracker build → backend/public/tracker.js
@@ -108,7 +106,9 @@ casualfunnel/
 │   │   │   └── main.ts            #   CORS · global prefix · static /tracker.js · Swagger
 │   │   ├── test/app.e2e-spec.ts
 │   │   └── .env.example
-│   └── dashboard/                 # @casualfunnel/dashboard (React)
+│   └── dashboard/                 # @casualfunnel/dashboard (React 19 + Tailwind + Vite)
+│       ├── public/
+│       │   └── demo.html          # Interactive tracking demo page
 │       ├── src/api/               #   fetch client + TanStack Query hooks
 │       ├── src/components/        #   SessionsView · SessionDrawer · Timeline · HeatmapView · HeatmapCanvas
 │       └── .env.example
@@ -155,7 +155,7 @@ Then:
 | http://localhost:3000/api/docs   | Swagger UI (interactive API docs)  |
 | http://localhost:3000/tracker.js | The compiled tracker bundle        |
 | http://localhost:5173            | React dashboard                    |
-| `demo/index.html`                | Demo page — **open the file in Chrome** |
+| http://localhost:5173/demo.html  | Interactive tracking demo page     |
 
 ### Root scripts
 
@@ -218,27 +218,27 @@ By default the dashboard calls the same-origin `/api`, which Vite proxies to
 ---
 
 ## The demo page
-
-`demo/index.html` is a **standalone** page — no server or build step. With the backend running on
-`:3000`, open the file directly in Chrome (File → Open, or drag it into a tab).
-
-It loads the tracker from the API:
-
+ 
+`packages/dashboard/public/demo.html` is an interactive test page served directly by the dashboard frontend at
+`http://localhost:5173/demo.html`. With `npm run dev` running, open it directly in your browser or click
+**Demo Page ↗** in the dashboard header.
+ 
+It loads the tracker through Vite's dev proxy (or directly from `:3000`):
+ 
 ```html
 <script
-  src="http://localhost:3000/tracker.js"
-  data-endpoint="http://localhost:3000/api"
+  src="/tracker.js"
+  data-endpoint="/api"
   data-debug="true"
   defer
 ></script>
 ```
-
+ 
 The page has CTA buttons, spread-out click tiles (so the heatmap has structure), an opt-out button
 (`data-cf-ignore`), a live local mirror of the events being sent, and custom `cta_click` events via
 `CausalFunnel.track(...)`.
-
-Because the page is opened from `file://`, its `Origin` is `null`; the API enables permissive CORS
-in development to allow this.
+ 
+Both `/tracker.js` and `/api` are proxied to the NestJS backend on port 3000 during local development.
 
 ---
 
@@ -329,11 +329,11 @@ curl -X POST http://localhost:3000/api/events \
   -d '{
         "events": [
           { "session_id": "s-1", "event_type": "page_view",
-            "page_url": "http://localhost:5500/demo/index.html",
+            "page_url": "http://localhost:5173/demo.html",
             "timestamp": "2026-01-01T12:00:00.000Z",
             "viewport": { "w": 1440, "h": 900 } },
           { "session_id": "s-1", "event_type": "click",
-            "page_url": "http://localhost:5500/demo/index.html",
+            "page_url": "http://localhost:5173/demo.html",
             "timestamp": "2026-01-01T12:00:03.000Z",
             "x": 412, "y": 260 }
         ]
@@ -412,7 +412,7 @@ Ordered list of a session's events.
 
 ```json
 {
-  "pageUrl": "http://localhost:5500/demo/index.html",
+  "pageUrl": "http://localhost:5173/demo.html",
   "total": 279,
   "truncated": false,
   "bounds": { "width": 1920, "height": 1080 },

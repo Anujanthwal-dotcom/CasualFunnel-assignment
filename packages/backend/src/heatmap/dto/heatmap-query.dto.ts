@@ -4,7 +4,7 @@ import { IsISO8601, IsOptional, IsString } from 'class-validator';
 export class HeatmapQueryDto {
   @ApiPropertyOptional({
     description: 'Exact page URL to filter on (see GET /api/pages). Omit for all pages.',
-    example: 'http://localhost:5500/demo/index.html',
+    example: 'http://localhost:5173/demo.html',
   })
   @IsOptional()
   @IsString()
