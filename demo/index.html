@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CausalFunnel · Tracking Demo</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b1120;
+        --panel: #121a2e;
+        --line: #243049;
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --brand: #6366f1;
+        --brand-2: #22d3ee;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        background: radial-gradient(1200px 600px at 20% -10%, #1e293b, var(--bg)) no-repeat, var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+      }
+      header {
+        padding: 28px 24px 16px;
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .brand { display: flex; align-items: center; gap: 12px; }
+      .logo {
+        width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+        font-weight: 800; background: linear-gradient(135deg, var(--brand), #d946ef);
+      }
+      h1 { font-size: 18px; margin: 0; }
+      .sub { color: var(--muted); font-size: 13px; margin: 2px 0 0; }
+      main { max-width: 1100px; margin: 0 auto; padding: 8px 24px 60px; }
+      .card {
+        background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent), var(--panel);
+        border: 1px solid var(--line); border-radius: 16px; padding: 20px;
+      }
+      .grid { display: grid; gap: 16px; grid-template-columns: 1.4fr 1fr; }
+      @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+      .hero { display: grid; gap: 16px; margin-bottom: 16px; }
+      .hero h2 { margin: 0; font-size: 26px; line-height: 1.2; }
+      .hero p { color: var(--muted); margin: 0; max-width: 60ch; }
+      .row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+      button, .tile {
+        font: inherit; cursor: pointer; border-radius: 12px;
+        border: 1px solid var(--line); background: #1a2338; color: var(--text);
+        padding: 12px 18px; transition: transform .08s ease, border-color .2s, background .2s;
+      }
+      button.primary { background: linear-gradient(135deg, var(--brand), #8b5cf6); border-color: transparent; font-weight: 600; }
+      button:hover, .tile:hover { border-color: var(--brand); background: #202b45; }
+      button:active, .tile:active { transform: translateY(1px); }
+      .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px; }
+      .tile { aspect-ratio: 1; display: grid; place-items: center; font-size: 13px; color: var(--muted); }
+      .muted { color: var(--muted); }
+      code { background: #0b1225; border: 1px solid var(--line); padding: 1px 6px; border-radius: 6px; font-size: 12px; }
+      .log { list-style: none; margin: 12px 0 0; padding: 0; max-height: 420px; overflow: auto; }
+      .log li { display: flex; gap: 8px; align-items: baseline; padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 13px; }
+      .pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: .04em; }
+      .pill.pv { background: rgba(99,102,241,.18); color: #a5b4fc; }
+      .pill.cl { background: rgba(34,211,238,.15); color: #67e8f9; }
+      .pill.ct { background: rgba(16,185,129,.15); color: #6ee7b7; }
+      .coords { color: var(--muted); font-family: ui-monospace, monospace; font-size: 12px; }
+      .status { font-size: 12px; color: var(--muted); margin-top: 6px; }
+      .banner { margin-top: 16px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <div class="logo">CF</div>
+        <div>
+          <h1>CausalFunnel Tracking Demo</h1>
+          <p class="sub">Open this file in Chrome with the backend running. Every click below is tracked.</p>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <div class="grid">
+        <section class="card">
+          <div class="hero">
+            <h2>Click around and watch events flow in</h2>
+            <p>
+              This page loads the tracker from <code>http://localhost:3000/tracker.js</code> and posts
+              batched events to <code>http://localhost:3000/api/events</code>. Because it is opened from
+              <code>file://</code>, the origin is <code>null</code> — the API allows it in development.
+            </p>
+            <div class="row">
+              <button class="primary" data-cta="primary">Primary CTA</button>
+              <button data-cta="secondary">Secondary</button>
+              <button data-cta="add-to-cart">Add to cart</button>
+              <button data-cf-ignore>Not tracked (data-cf-ignore)</button>
+            </div>
+          </div>
+
+          <p class="muted" style="margin-bottom: 0">Clickable tiles (spread out to make the heatmap interesting):</p>
+          <div class="tiles">
+            <div class="tile" role="button" tabindex="0">Product A</div>
+            <div class="tile" role="button" tabindex="0">Product B</div>
+            <div class="tile" role="button" tabindex="0">Product C</div>
+            <div class="tile" role="button" tabindex="0">Banner</div>
+            <div class="tile" role="button" tabindex="0">Reviews</div>
+            <div class="tile" role="button" tabindex="0">Buy now</div>
+          </div>
+
+          <div class="banner">
+            <p class="muted">
+              Custom events: the buttons also call <code>CausalFunnel.track(...)</code> so you can see a
+              non-default event type in the session timeline.
+            </p>
+            <p class="status" id="status">tracker: loading…</p>
+          </div>
+        </section>
+
+        <aside class="card">
+          <h3 style="margin: 0 0 4px">Live event feed</h3>
+          <p class="muted" style="margin: 0; font-size: 13px">
+            Local mirror of what the tracker sends. Session id:
+            <span id="session" class="coords">…</span>
+          </p>
+          <ul class="log" id="log"></ul>
+        </aside>
+      </div>
+    </main>
+
+    <!--
+      The tracker is served by the backend at /tracker.js.
+      data-endpoint tells it where the API lives; data-debug logs activity to the console.
+    -->
+    <script src="http://localhost:3000/tracker.js" data-endpoint="http://localhost:3000/api" data-debug="true" defer></script>
+    <script>
+      (function () {
+        const log = document.getElementById('log');
+        const session = document.getElementById('session');
+        const status = document.getElementById('status');
+
+        function push(type, label, coords) {
+          const li = document.createElement('li');
+          const cls = type === 'page_view' ? 'pv' : type === 'click' ? 'cl' : 'ct';
+          li.innerHTML =
+            '<span class="pill ' + cls + '">' + type + '</span>' +
+            '<span>' + (label || '') + '</span>' +
+            (coords ? '<span class="coords">' + coords + '</span>' : '');
+          log.prepend(li);
+          while (log.children.length > 60) log.removeChild(log.lastChild);
+        }
+
+        function ready(fn) {
+          if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+          else fn();
+        }
+
+        ready(function () {
+          // Mirror the automatic page_view.
+          push('page_view', location.pathname);
+
+          if (window.CausalFunnel && window.CausalFunnel.sessionId) {
+            session.textContent = window.CausalFunnel.sessionId;
+            status.textContent = 'tracker: active → ' + window.CausalFunnel.config.endpoint;
+          } else {
+            status.textContent = 'tracker: not loaded — is the backend running on :3000?';
+          }
+
+          // Mirror clicks (the tracker sends these automatically).
+          document.addEventListener('click', function (e) {
+            if (e.target.closest('[data-cf-ignore]')) return;
+            push('click', e.target.tagName.toLowerCase(), '(' + e.clientX + ', ' + e.clientY + ')');
+          }, true);
+
+          // Custom events on the CTA buttons.
+          document.querySelectorAll('[data-cta]').forEach(function (el) {
+            el.addEventListener('click', function () {
+              const name = el.getAttribute('data-cta');
+              push('custom', 'cta:' + name);
+              if (window.CausalFunnel) window.CausalFunnel.track('cta_click', { cta: name });
+            });
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>

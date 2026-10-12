@@ -1,0 +1,34 @@
+{
+  "name": "casualfunnel",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CausalFunnel - full-stack user analytics: embeddable tracker, NestJS ingestion/aggregation API, React dashboard.",
+  "license": "MIT",
+  "workspaces": [
+    "packages/tracker",
+    "packages/backend",
+    "packages/dashboard"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "npm run tracker:build && concurrently -k -n backend,dashboard -c blue,magenta \"npm run dev -w @casualfunnel/backend\" \"npm run dev -w @casualfunnel/dashboard\"",
+    "build": "npm run build -w @casualfunnel/tracker && node scripts/copy-tracker.mjs && npm run build -w @casualfunnel/backend && npm run build -w @casualfunnel/dashboard",
+    "tracker:build": "npm run build -w @casualfunnel/tracker && node scripts/copy-tracker.mjs",
+    "start": "npm run start -w @casualfunnel/backend",
+    "seed": "npm run seed -w @casualfunnel/backend",
+    "test": "npm run test -w @casualfunnel/backend && npm run test -w @casualfunnel/tracker",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "clean": "rm -rf packages/*/dist packages/backend/public/tracker.js node_modules/.cache"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "allowScripts": {
+    "esbuild@0.27.7": true,
+    "esbuild@0.21.5": true,
+    "@scarf/scarf": false
+  }
+}

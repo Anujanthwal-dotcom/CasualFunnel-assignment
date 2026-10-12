@@ -1,0 +1,23 @@
+{
+  "name": "@casualfunnel/tracker",
+  "version": "1.0.0",
+  "description": "Embeddable, dependency-free analytics tracker. Compiles to a single IIFE bundle.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/casualfunnel-tracker.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "happy-dom": "^15.11.6",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
