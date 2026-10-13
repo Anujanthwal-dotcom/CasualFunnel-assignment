@@ -21,7 +21,7 @@ export type Tone =
   | 'purple';
 
 const TONES: Record<Tone, string> = {
-  // PostHog / design.md semantic tones
+  // design.md semantic tones
   slate: 'bg-surface-soft text-body border-hairline',
   indigo: 'bg-accent-purple-soft text-accent-purple border-accent-purple/30',
   emerald: 'bg-accent-green-soft text-accent-green border-accent-green/30',

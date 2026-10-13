@@ -1,6 +1,7 @@
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { WsAdapter } from '@nestjs/platform-ws';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { join } from 'node:path';
 import { AppModule } from './app.module.js';
@@ -11,6 +12,9 @@ async function bootstrap(): Promise<void> {
     cors: false,
   });
   const logger = new Logger('Bootstrap');
+
+  // WebSocket adapter for native browser WebSocket compatibility
+  app.useWebSocketAdapter(new WsAdapter(app));
 
   // --- CORS -------------------------------------------------------------
   // The demo page is opened from file:// (Origin: null) and the dashboard
@@ -64,6 +68,7 @@ async function bootstrap(): Promise<void> {
   await app.listen(port, '0.0.0.0');
 
   logger.log(`API      -> http://localhost:${port}/api`);
+  logger.log(`WebSocket-> ws://localhost:${port}/ws/events`);
   logger.log(`Tracker  -> http://localhost:${port}/tracker.js`);
   logger.log(`Swagger  -> http://localhost:${port}/api/docs`);
 }

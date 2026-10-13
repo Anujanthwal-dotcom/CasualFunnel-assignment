@@ -4,192 +4,490 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CausalFunnel · Tracking Demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
     <style>
       :root {
-        color-scheme: dark;
-        --bg: #0b1120;
-        --panel: #121a2e;
-        --line: #243049;
-        --text: #e2e8f0;
-        --muted: #94a3b8;
-        --brand: #6366f1;
-        --brand-2: #22d3ee;
+        color-scheme: light;
+        --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --font-mono: 'Source Code Pro', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+        --canvas: #eeefe9;
+        --surface-card: #ffffff;
+        --surface-soft: #e5e7e0;
+        --surface-doc: #fcfcfa;
+        --ink: #23251d;
+        --body: #4d4f46;
+        --mute: #6c6e63;
+        --ash: #9b9c92;
+        --hairline: #bfc1b7;
+        --hairline-soft: #dcdfd2;
+
+        --primary: #f7a501;
+        --primary-hover: #dd9001;
+        --primary-active: #b17816;
+        --on-primary: #23251d;
+
+        --radius-sm: 4px;
+        --radius-md: 6px;
+        --radius-lg: 8px;
+        --radius-full: 9999px;
       }
+
       * { box-sizing: border-box; }
+
       body {
         margin: 0;
-        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-        background: radial-gradient(1200px 600px at 20% -10%, #1e293b, var(--bg)) no-repeat, var(--bg);
-        color: var(--text);
+        font-family: var(--font-sans);
+        background-color: var(--canvas);
+        color: var(--body);
         min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
       }
+
+      /* Header */
       header {
-        padding: 28px 24px 16px;
-        max-width: 1100px;
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        border-bottom: 1px solid var(--hairline);
+        background-color: rgba(238, 239, 233, 0.95);
+        backdrop-filter: blur(8px);
+      }
+      .header-inner {
+        max-width: 1000px;
         margin: 0 auto;
+        padding: 12px 20px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
       }
-      .brand { display: flex; align-items: center; justify-content: space-between; }
-      .brand-left { display: flex; align-items: center; gap: 12px; }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
       .logo {
-        width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
-        font-weight: 800; background: linear-gradient(135deg, var(--brand), #d946ef);
+        width: 36px;
+        height: 36px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--hairline);
+        background-color: var(--ink);
+        color: var(--primary);
+        display: grid;
+        place-items: center;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
       }
-      h1 { font-size: 18px; margin: 0; }
-      .sub { color: var(--muted); font-size: 13px; margin: 2px 0 0; }
-      .dash-link {
-        color: var(--brand-2); text-decoration: none; font-size: 13px; font-weight: 600;
-        display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px;
-        border-radius: 8px; border: 1px solid var(--line); background: rgba(34, 211, 238, 0.05);
-        transition: background .15s ease, border-color .15s ease;
+      .brand-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--ink);
+        margin: 0;
+        line-height: 1.2;
       }
-      .dash-link:hover {
-        background: rgba(34, 211, 238, 0.15); border-color: var(--brand-2);
+      .brand-sub {
+        font-size: 12px;
+        color: var(--mute);
+        margin: 2px 0 0;
       }
-      main { max-width: 1100px; margin: 0 auto; padding: 8px 24px 60px; }
+
+      .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 10px;
+        border-radius: var(--radius-full);
+        border: 1px solid var(--hairline);
+        background-color: var(--surface-card);
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--ink);
+      }
+      .status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background-color: #2c8c66;
+        box-shadow: 0 0 0 2px rgba(44, 140, 102, 0.2);
+      }
+      .status-dot.connecting {
+        background-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(247, 165, 1, 0.2);
+      }
+
+      .btn-nav {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--hairline);
+        background-color: var(--surface-soft);
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 700;
+        text-decoration: none;
+        transition: background-color 0.15s ease, border-color 0.15s ease;
+      }
+      .btn-nav:hover {
+        background-color: var(--hairline-soft);
+      }
+
+      /* Main container */
+      main {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 32px 20px 64px;
+      }
+
       .card {
-        background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent), var(--panel);
-        border: 1px solid var(--line); border-radius: 16px; padding: 20px;
+        background-color: var(--surface-card);
+        border: 1px solid var(--hairline);
+        border-radius: var(--radius-md);
+        overflow: hidden;
       }
-      .grid { display: grid; gap: 16px; grid-template-columns: 1.4fr 1fr; }
-      @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
-      .hero { display: grid; gap: 16px; margin-bottom: 16px; }
-      .hero h2 { margin: 0; font-size: 26px; line-height: 1.2; }
-      .hero p { color: var(--muted); margin: 0; max-width: 60ch; }
-      .row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
-      button, .tile {
-        font: inherit; cursor: pointer; border-radius: 12px;
-        border: 1px solid var(--line); background: #1a2338; color: var(--text);
-        padding: 12px 18px; transition: transform .08s ease, border-color .2s, background .2s;
+      .card-header {
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--hairline);
+        background-color: var(--surface-doc);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
       }
-      button.primary { background: linear-gradient(135deg, var(--brand), #8b5cf6); border-color: transparent; font-weight: 600; }
-      button:hover, .tile:hover { border-color: var(--brand); background: #202b45; }
-      button:active, .tile:active { transform: translateY(1px); }
-      .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px; }
-      .tile { aspect-ratio: 1; display: grid; place-items: center; font-size: 13px; color: var(--muted); }
-      .muted { color: var(--muted); }
-      code { background: #0b1225; border: 1px solid var(--line); padding: 1px 6px; border-radius: 6px; font-size: 12px; }
-      .log { list-style: none; margin: 12px 0 0; padding: 0; max-height: 420px; overflow: auto; }
-      .log li { display: flex; gap: 8px; align-items: baseline; padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 13px; }
-      .pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: .04em; }
-      .pill.pv { background: rgba(99,102,241,.18); color: #a5b4fc; }
-      .pill.cl { background: rgba(34,211,238,.15); color: #67e8f9; }
-      .pill.ct { background: rgba(16,185,129,.15); color: #6ee7b7; }
-      .coords { color: var(--muted); font-family: ui-monospace, monospace; font-size: 12px; }
-      .status { font-size: 12px; color: var(--muted); margin-top: 6px; }
-      .banner { margin-top: 16px; }
+      .card-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--ink);
+        margin: 0;
+      }
+      .card-body {
+        padding: 24px;
+      }
+
+      .hero-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--ink);
+        margin: 0 0 6px;
+      }
+      .hero-desc {
+        font-size: 13px;
+        color: var(--mute);
+        line-height: 1.6;
+        margin: 0 0 24px;
+      }
+
+      code {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        background-color: var(--surface-soft);
+        border: 1px solid var(--hairline-soft);
+        padding: 2px 6px;
+        border-radius: var(--radius-xs);
+        color: var(--ink);
+      }
+
+      /* Button group */
+      .section-label {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--mute);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin: 0 0 12px;
+      }
+      .btn-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 28px;
+      }
+      .btn {
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        padding: 10px 18px;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.08s ease;
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+      .btn-primary {
+        background-color: var(--primary);
+        color: var(--on-primary);
+        border: 1px solid transparent;
+      }
+      .btn-primary:hover {
+        background-color: var(--primary-hover);
+      }
+      .btn-primary:active {
+        background-color: var(--primary-active);
+      }
+      .btn-secondary {
+        background-color: var(--surface-soft);
+        color: var(--ink);
+        border: 1px solid var(--hairline);
+      }
+      .btn-secondary:hover {
+        background-color: var(--hairline-soft);
+      }
+      .btn-ghost {
+        background-color: transparent;
+        color: var(--mute);
+        border: 1px dashed var(--hairline);
+      }
+      .btn-ghost:hover {
+        background-color: var(--surface-soft);
+        color: var(--ink);
+      }
+
+      /* Interactive tiles */
+      .tiles-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+        margin-bottom: 28px;
+      }
+      @media (max-width: 600px) {
+        .tiles-grid { grid-template-columns: repeat(2, 1fr); }
+      }
+      .tile {
+        aspect-ratio: 1.25;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--hairline-soft);
+        background-color: var(--surface-doc);
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        cursor: pointer;
+        transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.08s ease;
+        text-align: left;
+        user-select: none;
+      }
+      .tile:hover {
+        background-color: var(--surface-card);
+        border-color: var(--hairline);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      }
+      .tile:active {
+        transform: translateY(1px);
+        background-color: var(--surface-soft);
+      }
+      .tile-tag {
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--mute);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .tile-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--ink);
+        margin: 4px 0 0;
+      }
+      .tile-hint {
+        font-size: 11px;
+        color: var(--ash);
+        font-family: var(--font-mono);
+      }
+
+      /* Callout banner */
+      .callout {
+        padding: 16px 20px;
+        border-radius: var(--radius-md);
+        background-color: var(--surface-doc);
+        border: 1px solid var(--hairline);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      @media (min-width: 640px) {
+        .callout {
+          flex-direction: row;
+          align-items: center;
+          justify-content: space-between;
+        }
+      }
+      .callout-text {
+        font-size: 12px;
+        color: var(--body);
+        line-height: 1.5;
+      }
+      .callout-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 14px;
+        border-radius: var(--radius-md);
+        background-color: var(--surface-card);
+        border: 1px solid var(--hairline);
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 700;
+        text-decoration: none;
+        white-space: nowrap;
+        transition: background-color 0.15s ease;
+      }
+      .callout-link:hover {
+        background-color: var(--surface-soft);
+      }
     </style>
   </head>
   <body>
     <header>
-      <div class="brand">
-        <div class="brand-left">
+      <div class="header-inner">
+        <div class="brand">
           <div class="logo">CF</div>
           <div>
-            <h1>CausalFunnel Tracking Demo</h1>
-            <p class="sub">Served by the dashboard frontend. Every click below is tracked in real-time.</p>
+            <h1 class="brand-title">CausalFunnel Tracking Demo</h1>
+            <p class="brand-sub">Interactive test environment for events &amp; click heatmaps</p>
           </div>
         </div>
-        <a href="/" class="dash-link">← Back to Dashboard</a>
+
+        <div class="header-actions">
+          <div class="status-pill" id="status-pill">
+            <span class="status-dot connecting" id="status-dot"></span>
+            <span id="status-text">Tracker: initializing…</span>
+          </div>
+          <a href="/" class="btn-nav">
+            <span>← Back to Dashboard</span>
+          </a>
+        </div>
       </div>
     </header>
 
     <main>
-      <div class="grid">
-        <section class="card">
-          <div class="hero">
-            <h2>Click around and watch events flow in</h2>
-            <p>
-              This page loads the tracker from <code>/tracker.js</code> and posts
-              batched events to <code>/api/events</code> (proxied to the backend API on port 3000).
-            </p>
-            <div class="row">
-              <button class="primary" data-cta="primary">Primary CTA</button>
-              <button data-cta="secondary">Secondary</button>
-              <button data-cta="add-to-cart">Add to cart</button>
-              <button data-cf-ignore>Not tracked (data-cf-ignore)</button>
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">Interactive Playground</h2>
+          <span style="font-size: 11px; color: var(--mute);">Click elements to test capture</span>
+        </div>
+
+        <div class="card-body">
+          <h3 class="hero-title">Click around to generate telemetry</h3>
+          <p class="hero-desc">
+            This page loads the tracker from <code>/tracker.js</code> and transmits events to <code>/api/events</code>.
+            All captured events are broadcast in real-time over WebSockets to the <strong>CausalFunnel Analytics Dashboard</strong>.
+          </p>
+
+          <!-- Buttons -->
+          <div class="section-label">Action Buttons</div>
+          <div class="btn-group">
+            <button class="btn btn-primary" data-cta="primary">Primary Action</button>
+            <button class="btn btn-secondary" data-cta="secondary">Secondary Action</button>
+            <button class="btn btn-secondary" data-cta="add-to-cart">Add to Cart</button>
+            <button class="btn btn-ghost" data-cf-ignore title="Tagged with data-cf-ignore">
+              Ignored Element ⊘
+            </button>
+          </div>
+
+          <!-- Heatmap Tiles -->
+          <div class="section-label">Heatmap Surface (Clickable Grid)</div>
+          <div class="tiles-grid">
+            <div class="tile" role="button" tabindex="0">
+              <span class="tile-tag">Analytics</span>
+              <span class="tile-title">Funnel Views</span>
+              <span class="tile-hint">tile-1</span>
+            </div>
+            <div class="tile" role="button" tabindex="0">
+              <span class="tile-tag">Telemetry</span>
+              <span class="tile-title">Session Paths</span>
+              <span class="tile-hint">tile-2</span>
+            </div>
+            <div class="tile" role="button" tabindex="0">
+              <span class="tile-tag">Visuals</span>
+              <span class="tile-title">Heatmap Density</span>
+              <span class="tile-hint">tile-3</span>
+            </div>
+            <div class="tile" role="button" tabindex="0">
+              <span class="tile-tag">Catalog</span>
+              <span class="tile-title">Product Alpha</span>
+              <span class="tile-hint">tile-4</span>
+            </div>
+            <div class="tile" role="button" tabindex="0">
+              <span class="tile-tag">Catalog</span>
+              <span class="tile-title">Product Beta</span>
+              <span class="tile-hint">tile-5</span>
+            </div>
+            <div class="tile" role="button" tabindex="0">
+              <span class="tile-tag">Conversion</span>
+              <span class="tile-title">Checkout Flow</span>
+              <span class="tile-hint">tile-6</span>
             </div>
           </div>
 
-          <p class="muted" style="margin-bottom: 0">Clickable tiles (spread out to make the heatmap interesting):</p>
-          <div class="tiles">
-            <div class="tile" role="button" tabindex="0">Product A</div>
-            <div class="tile" role="button" tabindex="0">Product B</div>
-            <div class="tile" role="button" tabindex="0">Product C</div>
-            <div class="tile" role="button" tabindex="0">Banner</div>
-            <div class="tile" role="button" tabindex="0">Reviews</div>
-            <div class="tile" role="button" tabindex="0">Buy now</div>
+          <!-- Live stream callout banner -->
+          <div class="callout">
+            <div class="callout-text">
+              <strong>⚡️ Live Dashboard Telemetry:</strong>
+              Events captured on this page are broadcast via WebSockets to automatically update the <strong>Sessions</strong> list and counters in real time.
+            </div>
+            <a href="/" target="_blank" rel="noopener noreferrer" class="callout-link">
+              View in Dashboard <span style="font-size: 10px; color: var(--mute);">↗</span>
+            </a>
           </div>
-
-          <div class="banner">
-            <p class="muted">
-              Custom events: the buttons also call <code>CausalFunnel.track(...)</code> so you can see a
-              non-default event type in the session timeline.
-            </p>
-            <p class="status" id="status">tracker: loading…</p>
-          </div>
-        </section>
-
-        <aside class="card">
-          <h3 style="margin: 0 0 4px">Live event feed</h3>
-          <p class="muted" style="margin: 0; font-size: 13px">
-            Local mirror of what the tracker sends. Session id:
-            <span id="session" class="coords">…</span>
-          </p>
-          <ul class="log" id="log"></ul>
-        </aside>
-      </div>
+        </div>
+      </section>
     </main>
 
-    <!--
-      The tracker is served at /tracker.js and proxies to the backend.
-      data-endpoint tells it where the API lives; data-debug logs activity to the console.
-    -->
+    <!-- Embedded tracker script -->
     <script src="/tracker.js" data-endpoint="/api" data-debug="true" defer></script>
     <script>
       (function () {
-        const log = document.getElementById('log');
-        const session = document.getElementById('session');
-        const status = document.getElementById('status');
-
-        function push(type, label, coords) {
-          const li = document.createElement('li');
-          const cls = type === 'page_view' ? 'pv' : type === 'click' ? 'cl' : 'ct';
-          li.innerHTML =
-            '<span class="pill ' + cls + '">' + type + '</span>' +
-            '<span>' + (label || '') + '</span>' +
-            (coords ? '<span class="coords">' + coords + '</span>' : '');
-          log.prepend(li);
-          while (log.children.length > 60) log.removeChild(log.lastChild);
-        }
+        const statusText = document.getElementById('status-text');
+        const statusDot = document.getElementById('status-dot');
 
         function ready(fn) {
-          if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
-          else fn();
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', fn);
+          } else {
+            fn();
+          }
         }
 
         ready(function () {
-          // Mirror the automatic page_view.
-          push('page_view', location.pathname);
-
-          if (window.CausalFunnel && window.CausalFunnel.sessionId) {
-            session.textContent = window.CausalFunnel.sessionId;
-            status.textContent = 'tracker: active → ' + window.CausalFunnel.config.endpoint;
-          } else {
-            status.textContent = 'tracker: not loaded — is the backend running on :3000?';
+          // Monitor tracker initialization
+          function checkTracker() {
+            if (window.CausalFunnel && window.CausalFunnel.sessionId) {
+              const sid = window.CausalFunnel.sessionId;
+              statusDot.className = 'status-dot';
+              statusText.textContent = 'Tracker Active · ' + (sid.length > 10 ? sid.slice(0, 10) + '…' : sid);
+              statusText.title = 'Session ID: ' + sid;
+            } else {
+              setTimeout(checkTracker, 200);
+            }
           }
+          checkTracker();
 
-          // Mirror clicks (the tracker sends these automatically).
-          document.addEventListener('click', function (e) {
-            if (e.target.closest('[data-cf-ignore]')) return;
-            push('click', e.target.tagName.toLowerCase(), '(' + e.clientX + ', ' + e.clientY + ')');
-          }, true);
-
-          // Custom events on the CTA buttons.
+          // Custom events on CTA buttons
           document.querySelectorAll('[data-cta]').forEach(function (el) {
             el.addEventListener('click', function () {
               const name = el.getAttribute('data-cta');
-              push('custom', 'cta:' + name);
-              if (window.CausalFunnel) window.CausalFunnel.track('cta_click', { cta: name });
+              if (window.CausalFunnel && typeof window.CausalFunnel.track === 'function') {
+                window.CausalFunnel.track('cta_click', { cta: name });
+              }
             });
           });
         });
