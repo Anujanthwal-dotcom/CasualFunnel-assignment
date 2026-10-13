@@ -388,7 +388,7 @@
         <div class="card-body">
           <h3 class="hero-title">Click around to generate telemetry</h3>
           <p class="hero-desc">
-            This page loads the tracker from <code>/tracker.js</code> and transmits events to <code>/api/events</code>.
+            This page loads the tracker from <code>casualfunnel-assignment-bq30.onrender.com/tracker.js</code> and transmits events to <code>casualfunnel-assignment-bq30.onrender.com/api/events</code>.
             All captured events are broadcast in real-time over WebSockets to the <strong>CausalFunnel Analytics Dashboard</strong>.
           </p>
 
@@ -453,7 +453,12 @@
     </main>
 
     <!-- Embedded tracker script -->
-    <script src="/tracker.js" data-endpoint="/api" data-debug="true" defer></script>
+    <script
+      src="https://casualfunnel-assignment-bq30.onrender.com/tracker.js"
+      data-endpoint="https://casualfunnel-assignment-bq30.onrender.com/api"
+      data-debug="true"
+      defer
+    ></script>
     <script>
       (function () {
         const statusText = document.getElementById('status-text');

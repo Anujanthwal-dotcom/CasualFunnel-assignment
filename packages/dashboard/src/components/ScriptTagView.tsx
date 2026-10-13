@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Button, Card } from './ui';
 
 const SCRIPT_TAG = `<script
-  src="http://localhost:3000/tracker.js"
-  data-endpoint="http://localhost:3000/api"
+  src="https://casualfunnel-assignment-bq30.onrender.com/tracker.js"
+  data-endpoint="https://casualfunnel-assignment-bq30.onrender.com/api"
   data-debug="true"
   defer
 ></script>`;
