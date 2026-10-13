@@ -9,9 +9,9 @@ The system answers the two questions the assignment cares about:
 
 ## Assumptions
 
-1. This assignment was built with the assumption of single tenant. This application could be extended to multi-tenant but the description of the assignment limits this project to be a small full-stack application.
-2. Heatmap is shown for a single page as this is a single tenant application.
-3. Though the description mentioned to create a JS script, I have created the script in Typescript first and then compiled it to JS as Typescript is more maintainable than JS. Also, Typescript was used in frontend and backend development also.
+1. Single-tenant only. Multi-tenant would be possible, but the assignment calls for a small full-stack app.
+2. The heatmap covers one page, since this is single-tenant.
+3. The tracker is authored in TypeScript and compiled to JS (easier to maintain); TypeScript is used across the frontend and backend too.
 
 ---
 
@@ -40,32 +40,24 @@ The system answers the two questions the assignment cares about:
 ## Architecture
 
 ```
-                        ┌──────────────────────────────────────────────┐
-  demo.html             │                                              │
-  (:5173/demo.html)     │            NestJS API  (:3000)               │
-        │               │                                              │
-        │  <script src="/tracker.js"> (proxied)                        │
-        ▼               │  ┌────────────┐   ┌──────────────────────┐   │
- ┌─────────────┐        │  │ /tracker.js│   │  POST /api/events    │   │
- │   TRACKER   │  POST  │  │ (static)   │   │  (IngestPipe + DTOs) │   │
- │  (IIFE JS)  │ ─────► │  └────────────┘   └──────────┬───────────┘   │
- │ page_view   │  /api/events                          │ insertMany    │
- │ click · x,y │        │                              ▼               │
- │ custom evts │        │                    ┌───────────────────┐     │
- └─────────────┘        │   aggregations ◄───│   MongoDB         │     │
-                        │  /api/sessions     │   events (raw)    │     │
-                        │  /api/heatmap      └───────────────────┘     │
-                        │  /api/pages /stats                           │
-                        └──────────────▲───────────────────────────────┘
-                                       │  JSON over HTTP (or Vite proxy)
-                        ┌──────────────┴───────────────┐
-                        │   REACT DASHBOARD (:5173)    │
-                        │   Sessions · Timeline ·      │
-                        │   Heatmap (dots/density)     │
-                        └──────────────────────────────┘
+   Your site / demo.html  (:5173/demo.html)
+        │  <script src="/tracker.js">  ·  POST /api/events
+        ▼
+  ┌──────────────┐  POST /api/events   ┌─────────────────────┐  insertMany   ┌────────────────────┐
+  │   TRACKER    │ ──────────────────► │  NestJS API (:3000) │ ────────────► │   MongoDB          │
+  │  (IIFE JS)   │                     │  ingest + aggregate │ ◄──────────── │   events (raw)     │
+  │ page_view ·  │                     └──────────┬──────────┘  aggregations  └────────────────────┘
+  │ click · custom                GET /api/*  +  ws /ws/events
+  └──────────────┘                              │ (live)
+                                                ▼
+                                     ┌──────────────────────┐
+                                     │  REACT DASHBOARD     │
+                                     │  Sessions · Heatmap  │
+                                     │  · Script tag        │
+                                     └──────────────────────┘
 ```
 
-One collection (`events`) is the **source of truth**. Every dashboard view is an aggregation over it — there are no denormalized rollup collections to keep in sync.
+One `events` collection is the **source of truth**: every dashboard view is an aggregation over it, with no rollup collections to keep in sync.
 
 ---
 
@@ -148,15 +140,6 @@ npm run seed
 npm run dev
 ```
 
-Then:
-
-| URL                              | What it is                         |
-| -------------------------------- | ---------------------------------- |
-| http://localhost:3000/api/docs   | Swagger UI (interactive API docs)  |
-| http://localhost:3000/tracker.js | The compiled tracker bundle        |
-| http://localhost:5173            | React dashboard                    |
-| http://localhost:5173/demo.html  | Interactive tracking demo page     |
-
 ### Root scripts
 
 | Script             | Does                                                                 |
@@ -183,8 +166,8 @@ npm run build -w @casualfunnel/tracker -- --watch   # rebuild on change
 npm test -w @casualfunnel/tracker
 ```
 
-The backend serves the bundle from `packages/backend/public/tracker.js`, kept in sync by
-`node scripts/copy-tracker.mjs` (run automatically by `npm run dev` / `npm run build`).
+The backend serves the bundle from `packages/backend/public/tracker.js`, synced by
+`node scripts/copy-tracker.mjs` (run by `npm run dev` / `npm run build`).
 </details>
 
 <details>
@@ -211,16 +194,16 @@ npm run build        # tsc -b && vite build
 npm run preview
 ```
 
-By default the dashboard calls the same-origin `/api`, which Vite proxies to
-`http://localhost:3000`. Set `VITE_API_URL` to call the API directly instead.
+By default the dashboard calls same-origin `/api`, which Vite proxies to `:3000`. Set
+`VITE_API_URL` to call the API directly instead.
 </details>
 
 ---
 
 ## The demo page
  
-`packages/dashboard/public/demo.html` is an interactive test page served directly by the dashboard frontend at
-`http://localhost:5173/demo.html`. With `npm run dev` running, open it directly in your browser or click
+`packages/dashboard/public/demo.html` is a test page served by the dashboard at
+`http://localhost:5173/demo.html`. With `npm run dev` running, open it directly or click
 **Demo Page ↗** in the dashboard header.
  
 It loads the tracker through Vite's dev proxy (or directly from `:3000`):
@@ -234,11 +217,10 @@ It loads the tracker through Vite's dev proxy (or directly from `:3000`):
 ></script>
 ```
  
-The page has CTA buttons, spread-out click tiles (so the heatmap has structure), an opt-out button
-(`data-cf-ignore`), a live local mirror of the events being sent, and custom `cta_click` events via
-`CausalFunnel.track(...)`.
+It includes CTA buttons, spread-out click tiles (so the heatmap has structure), a `data-cf-ignore`
+opt-out, a live mirror of the events being sent, and custom `cta_click` events via `CausalFunnel.track(...)`.
  
-Both `/tracker.js` and `/api` are proxied to the NestJS backend on port 3000 during local development.
+During local dev, both `/tracker.js` and `/api` proxy to the NestJS backend on `:3000`.
 
 ---
 
@@ -254,15 +236,15 @@ Dependency-free, ~7 KB minified. It auto-initializes on load and exposes `window
 
 **Delivery**
 
-- Events are batched in memory (`batchSize`, default 10) and flushed on an interval
-  (`flushIntervalMs`, default 5 s) via `fetch(..., { keepalive: true })`.
+- Batched in memory (`batchSize` 10) and flushed every `flushIntervalMs` (5 s) via
+  `fetch(..., { keepalive: true })`.
 - On page hide/unload it flushes with `navigator.sendBeacon`.
 - Failed batches are re-queued (bounded by `maxQueue`) for at-least-once delivery.
 
 **Sessions**
 
-- A session id is generated client-side (UUID v4) and persisted in `localStorage`
-  (cookie fallback for private mode). It rotates after `sessionTimeoutMs` (default 30 min) of inactivity.
+- A client-side UUID v4 session id is kept in `localStorage` (cookie fallback), rotating after
+  `sessionTimeoutMs` (30 min) of inactivity.
 
 **Imperative API**
 
@@ -320,8 +302,8 @@ Base URL: `http://localhost:3000/api` · Interactive docs: `/api/docs`
 
 ### `POST /api/events` — ingest
 
-Accepts a single event object, a bare array, or `{ "events": [...] }` (the tracker sends the envelope).
-Invalid items are skipped and reported; valid items are persisted. Returns **`202`**.
+Accepts a single event, a bare array, or `{ "events": [...] }` (what the tracker sends). Invalid items
+are skipped and reported; valid ones are persisted. Returns **`202`**.
 
 ```bash
 curl -X POST http://localhost:3000/api/events \
@@ -354,9 +336,9 @@ When some items are invalid:
 }
 ```
 
-Event fields: `session_id`, `event_type`, `page_url`, `timestamp` (ISO-8601) are **required**;
-`x`, `y`, `viewport {w,h}`, `referrer`, `user_agent`, `metadata` are optional. `event_type` is a free
-string — `page_view` and `click` are the built-ins, custom types (e.g. `cta_click`) are accepted.
+Required: `session_id`, `event_type`, `page_url`, `timestamp` (ISO-8601). Optional: `x`, `y`,
+`viewport {w,h}`, `referrer`, `user_agent`, `metadata`. `event_type` is free-form — `page_view` and
+`click` are built in, custom types (e.g. `cta_click`) are accepted.
 
 ### `GET /api/sessions` — session list
 
@@ -420,9 +402,8 @@ Ordered list of a session's events.
 }
 ```
 
-`bounds` is the largest viewport the points were captured in, so the canvas can scale coordinates
-recorded at different screen sizes onto one plane. `truncated` is `true` when the
-`HEATMAP_MAX_POINTS` cap kicked in.
+`bounds` is the largest viewport the points were captured in, so the canvas can scale coordinates from
+different screen sizes onto one plane. `truncated` is `true` when the `HEATMAP_MAX_POINTS` cap is hit.
 
 ### `GET /api/pages` — tracked pages
 
@@ -439,8 +420,8 @@ Powers the heatmap page selector.
 
 ### `GET /api/health` · `GET /tracker.js`
 
-`/api/health` returns service status + MongoDB readiness. `/tracker.js` serves the compiled tracker
-(static, outside the `/api` prefix) — this is the API's "CDN" role.
+`/api/health` returns service status and MongoDB readiness. `/tracker.js` serves the compiled tracker
+(static, outside the `/api` prefix) — the API's CDN role.
 
 ---
 
@@ -463,7 +444,7 @@ Single collection: **`events`** (`packages/backend/src/events/schemas/event.sche
 }
 ```
 
-Indexes, chosen to back the three hot read paths (timeline, heatmap, session list):
+Indexes backing the three hot read paths (timeline, heatmap, session list):
 
 | Index                                        | Serves                                             |
 | -------------------------------------------- | -------------------------------------------------- |
@@ -478,9 +459,9 @@ Indexes, chosen to back the three hot read paths (timeline, heatmap, session lis
 
 ## How the analysis is computed
 
-**Sessionization** happens **client-side** in the tracker: a session id is minted on first activity,
-persisted in `localStorage`, and rotated after 30 minutes idle. The server treats `session_id` as an
-opaque grouping key — this keeps the API stateless and matches how browser analytics tools work.
+**Sessionization** is **client-side**: the tracker mints a session id on first activity, persists it in
+`localStorage`, and rotates it after 30 minutes idle. The server treats `session_id` as an opaque
+grouping key, keeping the API stateless.
 
 **Session list** (`sessions.service.ts`) is a single aggregation:
 
@@ -518,8 +499,8 @@ Coverage:
 - **Backend e2e (Supertest)** — the full ingestion → aggregation path against MongoDB, including
   partial-batch validation and the three accepted request shapes.
 
-All tests above pass against a live MongoDB 7 instance, and the compiled tracker bundle was verified
-end-to-end (browser-like DOM → real HTTP) to ingest `page_view`, `click`, and custom events.
+All tests pass against a live MongoDB 7 instance, and the compiled tracker bundle was verified
+end-to-end (browser-like DOM → real HTTP) for `page_view`, `click`, and custom events.
 
 ---
 
