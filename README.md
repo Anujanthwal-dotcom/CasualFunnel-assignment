@@ -105,6 +105,14 @@ casualfunnel/
 └── README.md
 ```
 
+### Packages
+
+| Package | Purpose | Tech |
+| ------- | ------- | ---- |
+| [`packages/tracker`](./packages/tracker/README.md) | Embeddable client-side tracker: captures page views, clicks, and custom events with sessionization, batching, and reliable delivery. | TypeScript → IIFE (tsup/esbuild) |
+| [`packages/backend`](./packages/backend/README.md) | NestJS ingestion + aggregation API: persists events in MongoDB, serves sessions, timelines, heatmap, pages, and stats, and serves the tracker bundle. | NestJS 12, Mongoose, MongoDB, WebSocket |
+| [`packages/dashboard`](./packages/dashboard/README.md) | React dashboard for exploring sessions, timelines, and click heatmaps, plus an interactive demo page for generating test data. | React 19, Vite, Tailwind CSS v4, TanStack Query |
+
 ---
 
 ## Prerequisites
